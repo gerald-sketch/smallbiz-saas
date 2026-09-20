@@ -1,0 +1,23 @@
+{
+  "name": "smallbiz-saas",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "msgpackr-extract@3.0.4": true,
+    "workerd@1.20260704.1": true
+  },
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,green \"npm -w apps/api run dev\" \"npm -w apps/web run dev\"",
+    "build": "npm -w packages/shared run build && npm -w apps/api run build && npm -w apps/web run build",
+    "db:migrate": "npm -w apps/api run db:migrate",
+    "db:studio": "npm -w apps/api run db:studio"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0",
+    "typescript": "^5.5.0"
+  }
+}
