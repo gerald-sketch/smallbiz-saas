@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: smallbiz-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sbuser
+      POSTGRES_PASSWORD: sbpass
+      POSTGRES_DB: smallbiz
+    ports:
+      - "5433:5432" # ← host 5433 → container 5432
+    volumes:
+      - sb_pgdata:/var/lib/postgresql/data
+volumes:
+  sb_pgdata:
