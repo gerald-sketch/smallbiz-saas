@@ -8,3 +8,12 @@ build/
 coverage/
 .DS_Store
 apps/api/prisma/*.db
+# Generated Prisma client
+apps/api/src/generated/
+
+# TypeScript build cache
+*.tsbuildinfo
+
+# Test exports
+*.csv
+!apps/api/prisma/**/*.csv
