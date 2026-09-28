@@ -1,54 +1,66 @@
 # SmallBiz — Small Business Management SaaS
 
-One platform for small businesses to manage their entire operation:
-inventory, POS, purchasing, suppliers, customers, staff, expenses, and reporting.
+One platform for small businesses to manage their entire operation: inventory, POS, purchasing, suppliers, customers, staff, expenses, and reporting. Built for the Philippine market — VAT-inclusive pricing, GCash/Maya QR payments, peso formatting throughout.
 
-Built for the Philippine market — VAT-inclusive pricing, PayMongo billing
-(GCash / Maya / cards), peso formatting throughout.
+**[Live Demo](https://smallbiz-saas-web.vercel.app)** · **[API Status](https://smallbiz-saas.onrender.com/api/health)** · **[Report a Bug](https://github.com/gerald-sketch/smallbiz-saas/issues)**
+
+> **Status:** ✅ Deployed and live — [smallbiz-saas-web.vercel.app](https://smallbiz-saas-web.vercel.app)
+>
+> The live demo runs on free tiers (Render + Vercel + Neon). The first request after 15 minutes of inactivity may take 30–50 seconds while the API cold-starts.
+
+---
 
 ## Stack
 
-| Layer      | Technology                                                           |
-| ---------- | -------------------------------------------------------------------- |
-| Frontend   | React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui, TanStack Query  |
-| Backend    | Node.js, Express 5, TypeScript                                       |
-| Database   | PostgreSQL 16, Prisma 7 (driver adapter)                             |
-| Validation | Zod — shared schemas between frontend and backend                    |
-| Auth       | JWT (15-min access + 7-day refresh), bcrypt, HTTP-only cookies, RBAC |
-| Payments   | PayMongo (hosted checkout + HMAC-verified webhooks)                  |
-| Structure  | npm workspaces monorepo                                              |
+| Layer           | Technology                                                                       |
+| --------------- | -------------------------------------------------------------------------------- |
+| **Frontend**    | React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui, TanStack Query              |
+| **Backend**     | Node.js, Express 5, TypeScript                                                   |
+| **Database**    | PostgreSQL 16, Prisma 7 with `@prisma/adapter-pg` driver adapter                 |
+| **Validation**  | Zod — schemas shared between frontend and backend via `@sb/shared`               |
+| **Auth**        | JWT (15-min access + 7-day refresh), bcrypt (12 rounds), HTTP-only cookies, RBAC |
+| **Payments**    | PayMongo (hosted checkout + HMAC-verified webhooks)                              |
+| **Forecasting** | Statistical demand forecasting from 30-day sales velocity                        |
+| **Structure**   | npm workspaces monorepo                                                          |
+| **Deployment**  | Vercel (frontend) · Render (API) · Neon (database)                               |
+
+---
 
 ## Modules
 
-- **Auth** — register, login, refresh, logout, RBAC (OWNER / MANAGER / STAFF)
-- **Dashboard** — today's sales, MTD revenue, inventory value, low stock, recent activity
-- **POS** — cart, discounts, cash tender + change, receipt printing, idempotent checkout
-- **Products** — CRUD, categories, pricing, soft delete
-- **Inventory** — stock in/out/adjust, low-stock alerts, row-level locking
+### Core Operations
+
+- **Auth** — register, login, refresh token rotation, logout, RBAC (OWNER / MANAGER / STAFF), self-service password reset
+- **Dashboard** — today's sales, MTD revenue, inventory value, low-stock alerts, recent activity, dual-axis sales chart
+- **POS** — cart, product search, category filter, discounts, cash tender with change, GCash/Maya QR display, receipt printing, idempotent checkout
+- **Products** — CRUD, categories, pricing, stock levels, soft delete
+- **Inventory** — stock in/out/adjust with row-level locking, low-stock alerts, category and status filters, colored stock-level bars
+
+### Business Management
+
 - **Customers** — profiles, purchase history, loyalty points
-- **Suppliers** — directory, contact info, purchase history
-- **Purchases** — purchase orders, receive-to-stock-in flow
-- **Employees** — staff accounts, role management
-- **Expenses** — categorized operating costs, monthly totals
-- **Reports** — sales summary (day/week/month), P&L, inventory valuation, top products, CSV export
-- **Billing** — PayMongo subscription plans (Free / Starter / Pro)
+- **Suppliers** — directory, contact info, purchase history per supplier
+- **Purchases** — purchase orders, receive-to-stock-in flow, status tracking
+- **Employees** — staff accounts, role management, password resets
+- **Expenses** — categorized operating costs, monthly totals by category
+
+### Intelligence & Reporting
+
+- **Reports** — sales summary (day/week/month), profit & loss, inventory valuation, top products, CSV export
+- **Forecasting** — demand predictions from sales velocity, reorder alerts, stockout projections, fast/slow movers, dead stock detection
+- **Team Performance** — per-staff sales analytics with drill-down views
+
+### Billing & Settings
+
+- **Billing** — PayMongo subscription infrastructure (implemented, disabled for the demo)
+- **Settings** — business profile, VAT configuration, GCash/Maya QR code upload
+
+---
 
 ## Engineering Highlights
 
-These are the parts worth reading the code for:
+These are the parts worth reading the code for.
 
-- **Idempotency keys on every write** — client generates a UUID per operation; the
-  server stores the response and replays it on retry. Double-clicking "Checkout"
-  cannot create two sales.
-- **Row-level locking on stock** — `SELECT ... FOR UPDATE` inside a transaction,
-  with deterministic lock ordering to prevent deadlocks. Concurrent checkouts
-  serialize correctly and stock never goes negative.
-- **HMAC-verified webhooks** — raw body preserved via `express.raw()`, signature
-  compared with `timingSafeEqual`, events deduplicated by ID. Responds 200 before
-  processing so PayMongo never retries unnecessarily.
-- **Multi-tenancy from day one** — every query filters by `businessId`. No
-  retrofit, no accidental cross-tenant leaks.
-- **VAT-inclusive pricing** — per Philippine BIR standard, the shelf price includes
-  VAT; the VAT portion is extracted for reporting rather than added on top.
+### Idempotency on every write
 
-## Project Structure
+Every mutating request carries a client-generated `Idempotency-Key`. The server stores the response and replays it on retry. **A double-click on "Checkout" cannot create two sales, double-charge a customer, or deduct stock twice.**

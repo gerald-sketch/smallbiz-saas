@@ -23,7 +23,11 @@ export const ForgotPasswordSchema = z.object({
 });
 
 export const ResetPasswordSchema = z.object({
-  token: z.string().min(16).max(128),
+  email: z.string().email().max(255),
+  code: z
+    .string()
+    .length(6, "Code must be 6 digits")
+    .regex(/^\d{6}$/, "Code must be exactly 6 digits"),
   password: z
     .string()
     .min(8, "Password must be at least 8 characters")

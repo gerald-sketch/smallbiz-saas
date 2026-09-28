@@ -107,8 +107,8 @@ export async function resetPassword(
   next: NextFunction,
 ): Promise<void> {
   try {
-    const { token, password } = req.body;
-    await authService.resetPassword(token, password);
+    const { email, code, password } = req.body;
+    await authService.resetPassword(email, code, password);
     res.json({
       ok: true,
       message: "Password has been reset. You can now sign in.",

@@ -17,6 +17,10 @@ const EnvSchema = z.object({
   COOKIE_DOMAIN: z.string().default("localhost"),
   APP_URL: z.string().default("http://localhost:5173"),
 
+  // Email (Gmail)
+  EMAIL_USER: z.string().email().optional(),
+  EMAIL_APP_PASSWORD: z.string().min(16).optional(),
+
   PAYMONGO_SECRET_KEY: z.string().optional(),
   PAYMONGO_PUBLIC_KEY: z.string().optional(),
   PAYMONGO_WEBHOOK_SECRET: z.string().optional(),

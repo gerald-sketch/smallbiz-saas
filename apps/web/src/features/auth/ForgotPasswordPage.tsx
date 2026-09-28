@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Mail, CheckCircle2 } from "lucide-react";
 import { api, apiErrorMessage } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ export function ForgotPasswordPage() {
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const navigate = useNavigate();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -52,23 +53,37 @@ export function ForgotPasswordPage() {
           </CardTitle>
           <CardDescription className="text-center">
             {sent
-              ? "If that email is registered, a reset link has been sent. It expires in 1 hour."
-              : "Enter your email and we'll send you a link to reset your password."}
+              ? `We sent a 6-digit code to ${email}. It expires in 10 minutes.`
+              : "Enter your email and we'll send you a code to reset your password."}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {sent ? (
             <>
               <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-xs text-muted-foreground mb-4">
-                <strong className="text-foreground">Demo mode:</strong> the
-                reset link prints to the API server console. Check Terminal B,
-                copy the URL, and open it in your browser.
+                Didn't get the email? Check your spam folder, or{" "}
+                <button
+                  type="button"
+                  className="text-primary underline"
+                  onClick={() => setSent(false)}
+                >
+                  try again
+                </button>
+                .
               </div>
+              <Button
+                className="w-full h-11 rounded-xl"
+                onClick={() =>
+                  navigate(`/reset-password?email=${encodeURIComponent(email)}`)
+                }
+              >
+                Enter reset code
+              </Button>
               <Link
                 to="/login"
-                className="flex items-center justify-center w-full h-11 rounded-xl border border-border text-sm font-medium hover:bg-muted/50 transition-colors"
+                className="flex items-center justify-center mt-3 text-xs text-muted-foreground hover:text-foreground"
               >
-                <ArrowLeft className="h-4 w-4 mr-2" />
+                <ArrowLeft className="h-3 w-3 mr-1" />
                 Back to sign in
               </Link>
             </>
@@ -93,7 +108,7 @@ export function ForgotPasswordPage() {
                 className="w-full h-11 rounded-xl"
                 disabled={loading}
               >
-                {loading ? "Sending..." : "Send reset link"}
+                {loading ? "Sending..." : "Send reset code"}
               </Button>
               <Link
                 to="/login"

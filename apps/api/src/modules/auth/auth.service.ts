@@ -9,7 +9,8 @@ import {
   verifyRefreshToken,
   Role,
 } from "../../lib/jwt";
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomInt } from "node:crypto";
+import { sendPasswordResetCode } from "../../lib/email";
 
 interface AuthResult {
   accessToken: string;
@@ -146,8 +147,15 @@ export async function refresh(refreshToken: string): Promise<AuthResult> {
     },
   };
 }
+
+/* ─────────────────────────  Password reset  ───────────────────────── */
+
 function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
+}
+
+function generateSixDigitCode(): string {
+  return randomInt(0, 1_000_000).toString().padStart(6, "0");
 }
 
 export async function forgotPassword(email: string): Promise<void> {
@@ -156,63 +164,64 @@ export async function forgotPassword(email: string): Promise<void> {
     select: { id: true, email: true, name: true },
   });
 
+  // Anti-enumeration: always return success, whether the email exists or not
   if (!user) {
     console.log(`[Password Reset] Requested for unknown email: ${email}`);
     return;
   }
 
+  // Invalidate any outstanding codes for this user
   await prisma.passwordResetToken.deleteMany({
     where: { userId: user.id, usedAt: null },
   });
 
-  const token = randomBytes(32).toString("hex");
-  const tokenHash = hashToken(token);
-  const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+  const code = generateSixDigitCode();
+  const tokenHash = hashToken(code);
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
   await prisma.passwordResetToken.create({
     data: { userId: user.id, tokenHash, expiresAt },
   });
 
-  const resetUrl = `${env.APP_URL}/reset-password?token=${token}`;
-
-  console.log("\n─────────────────────────────────────────────────────");
-  console.log("  PASSWORD RESET LINK");
-  console.log("─────────────────────────────────────────────────────");
-  console.log(`  User:  ${user.name} <${user.email}>`);
-  console.log(`  Link:  ${resetUrl}`);
-  console.log(`  Expires: ${expiresAt.toISOString()}`);
-  console.log("─────────────────────────────────────────────────────\n");
+  await sendPasswordResetCode(user.email, code, user.name);
 }
 
 export async function resetPassword(
-  token: string,
+  email: string,
+  code: string,
   newPassword: string,
 ): Promise<void> {
-  const tokenHash = hashToken(token);
-
-  const record = await prisma.passwordResetToken.findUnique({
-    where: { tokenHash },
-    include: { user: { select: { id: true, deletedAt: true } } },
+  const user = await prisma.user.findFirst({
+    where: { email, deletedAt: null },
+    select: { id: true },
   });
 
-  if (!record)
-    throw new AppError(400, "INVALID_TOKEN", "Reset link is invalid");
-  if (record.usedAt)
-    throw new AppError(
-      400,
-      "TOKEN_USED",
-      "This reset link has already been used",
-    );
-  if (record.expiresAt < new Date())
-    throw new AppError(400, "TOKEN_EXPIRED", "This reset link has expired");
-  if (record.user.deletedAt)
-    throw new AppError(400, "INVALID_TOKEN", "Reset link is invalid");
+  // Uniform error — don't reveal whether the email exists
+  if (!user) {
+    throw new AppError(400, "INVALID_CODE", "Invalid or expired code");
+  }
+
+  const tokenHash = hashToken(code);
+
+  const record = await prisma.passwordResetToken.findFirst({
+    where: { userId: user.id, tokenHash },
+  });
+
+  if (!record) {
+    throw new AppError(400, "INVALID_CODE", "Invalid or expired code");
+  }
+  if (record.usedAt) {
+    throw new AppError(400, "CODE_USED", "This code has already been used");
+  }
+  if (record.expiresAt < new Date()) {
+    throw new AppError(400, "CODE_EXPIRED", "This code has expired");
+  }
 
   const passwordHash = await bcrypt.hash(newPassword, env.BCRYPT_ROUNDS);
 
   await prisma.$transaction([
     prisma.user.update({
-      where: { id: record.userId },
+      where: { id: user.id },
       data: { passwordHash },
     }),
     prisma.passwordResetToken.update({
