@@ -9,6 +9,7 @@ import {
   BarChart3,
   User,
   ShieldCheck,
+  Mail,
 } from "lucide-react";
 import { useStaffOverview, type StaffSummary } from "./use-staff-performance";
 import { StaffDetailDialog } from "./StaffDetailDialog";
@@ -123,7 +124,7 @@ function StaffCard({
         </div>
       )}
 
-      <div className="flex items-start gap-3 mb-4">
+      <div className="mb-4 flex flex-col items-center gap-3 text-center">
         <div
           className={cn(
             "h-11 w-11 rounded-full flex items-center justify-center text-sm font-bold shrink-0",
@@ -134,10 +135,15 @@ function StaffCard({
         >
           {initials}
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="font-semibold truncate leading-tight">{staff.name}</p>
-          <div className="flex items-center gap-1.5 mt-1">
-            <Badge variant="outline" className="text-[10px] h-5">
+        <div className="w-full min-w-0">
+          <p className="break-words font-semibold leading-tight">
+            {staff.name}
+          </p>
+          <div className="mt-1 flex flex-wrap items-center justify-center gap-1.5">
+            <Badge
+              variant="outline"
+              className="h-5 px-2 text-[10px] font-medium"
+            >
               {ROLE_LABEL[staff.role]}
             </Badge>
             {!hasSales && (
@@ -146,6 +152,10 @@ function StaffCard({
               </span>
             )}
           </div>
+          <p className="mt-2 flex items-start justify-center gap-1.5 text-xs leading-relaxed text-muted-foreground">
+            <Mail className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+            <span className="min-w-0 break-all">{staff.email}</span>
+          </p>
         </div>
       </div>
 

@@ -25,6 +25,7 @@ import {
   CreditCard,
   Smartphone,
   Building2,
+  Mail,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -68,9 +69,9 @@ export function StaffDetailDialog({ userId, onClose }: Props) {
           </div>
         ) : (
           <>
-            <DialogHeader>
-              <div className="flex items-center gap-4">
-                <div className="h-14 w-14 rounded-full bg-primary/15 flex items-center justify-center text-lg font-bold text-primary shrink-0">
+            <DialogHeader className="border-b border-border/60 pb-5 pr-8">
+              <div className="flex items-center gap-3 text-left sm:gap-4">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-primary/15 bg-primary/10 text-lg font-bold text-primary">
                   {data.staff.name
                     .split(" ")
                     .map((n) => n[0])
@@ -79,14 +80,25 @@ export function StaffDetailDialog({ userId, onClose }: Props) {
                     .toUpperCase()}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <DialogTitle className="text-xl">
-                    {data.staff.name}
-                  </DialogTitle>
-                  <DialogDescription className="flex items-center gap-2 mt-0.5">
-                    <Badge variant="outline" className="text-[10px]">
+                  <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                    <DialogTitle className="break-words text-xl font-semibold leading-tight sm:text-2xl">
+                      {data.staff.name}
+                    </DialogTitle>
+                    <Badge
+                      variant="secondary"
+                      className="border border-primary/15 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
+                    >
                       {ROLE_LABEL[data.staff.role]}
                     </Badge>
-                    <span className="text-xs">{data.staff.email}</span>
+                  </div>
+                  <DialogDescription className="mt-2 flex min-w-0 items-start justify-start gap-2 text-sm leading-relaxed">
+                    <Mail
+                      className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground"
+                      aria-hidden="true"
+                    />
+                    <span className="min-w-0 break-all">
+                      {data.staff.email}
+                    </span>
                   </DialogDescription>
                 </div>
               </div>
