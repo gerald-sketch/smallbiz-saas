@@ -26,7 +26,6 @@ import {
   LogOut,
   Menu,
   X,
-  Hexagon,
   ChevronUp,
   Sparkles,
   Award,
@@ -257,12 +256,7 @@ function SidebarContent({
     <>
       <div className="px-4 py-5 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center shrink-0">
-            <Hexagon
-              className="h-4 w-4 text-primary-foreground"
-              strokeWidth={2.5}
-            />
-          </div>
+          <img src="/smallbiz-mark.svg" alt="" className="h-8 w-8 shrink-0" />
           <div className="min-w-0">
             <h1 className="font-semibold text-[15px] leading-tight">
               SmallBiz
@@ -347,6 +341,7 @@ export function AppShell() {
             >
               <Menu className="h-5 w-5" />
             </Button>
+            <img src="/smallbiz-mark.svg" alt="" className="h-7 w-7 shrink-0" />
             <h1 className="font-semibold text-base">SmallBiz</h1>
           </div>
         </header>
