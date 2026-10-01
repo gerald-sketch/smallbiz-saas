@@ -29,7 +29,7 @@ export function BillingCancelPage() {
               </Link>
             </Button>
             <Button asChild variant="outline" className="rounded-xl">
-              <Link to="/">
+              <Link to="/dashboard">
                 <ArrowLeft className="h-4 w-4 mr-1.5" />
                 Back to dashboard
               </Link>

@@ -6,11 +6,13 @@ import { env } from "./config/env";
 import { routes } from "./routes";
 import { errorHandler } from "./middleware/errorHandler";
 import { generalLimiter } from "./middleware/rateLimit";
+import { logSlowRequests } from "./middleware/logSlowRequests.js";
 
 export const app = express();
 
 app.set("trust proxy", 1);
 app.use(helmet());
+app.use(logSlowRequests);
 app.use(
   cors({
     origin: env.CORS_ORIGINS.split(",").map((s) => s.trim()),

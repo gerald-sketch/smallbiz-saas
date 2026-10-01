@@ -98,7 +98,7 @@ export function BillingSuccessPage() {
               </Link>
             </Button>
             <Button asChild variant="outline" className="rounded-xl">
-              <Link to="/">Back to dashboard</Link>
+              <Link to="/dashboard">Back to dashboard</Link>
             </Button>
           </div>
         </CardContent>

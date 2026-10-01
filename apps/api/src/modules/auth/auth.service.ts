@@ -78,7 +78,15 @@ export async function register(input: RegisterInput): Promise<AuthResult> {
 export async function login(input: LoginInput): Promise<AuthResult> {
   const user = await prisma.user.findFirst({
     where: { email: input.email, deletedAt: null },
-    include: { business: true },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      businessId: true,
+      passwordHash: true,
+      business: { select: { name: true } },
+    },
   });
 
   if (!user) {
@@ -121,7 +129,14 @@ export async function refresh(refreshToken: string): Promise<AuthResult> {
 
   const user = await prisma.user.findFirst({
     where: { id: payload.sub, deletedAt: null },
-    include: { business: true },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      businessId: true,
+      business: { select: { name: true } },
+    },
   });
   if (!user) {
     throw new AppError(401, "INVALID_REFRESH_TOKEN", "User no longer exists");

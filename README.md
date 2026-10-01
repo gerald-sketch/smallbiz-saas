@@ -64,3 +64,11 @@ These are the parts worth reading the code for.
 ### Idempotency on every write
 
 Every mutating request carries a client-generated `Idempotency-Key`. The server stores the response and replays it on retry. **A double-click on "Checkout" cannot create two sales, double-charge a customer, or deduct stock twice.**
+
+## Naming Conventions
+
+- Use `camelCase` for variables, functions, object fields, and JSON properties.
+- Use `PascalCase` for React components, classes, TypeScript types/interfaces, and Zod schemas.
+- Use `UPPER_SNAKE_CASE` for environment variables and module-level constants that represent fixed configuration.
+- Keep feature directories lowercase; name API files by role, such as `auth.controller.ts`, `auth.service.ts`, and `auth.routes.ts`.
+- Use singular `PascalCase` Prisma model names with `camelCase` fields. Keep HTTP route segments lowercase and kebab-case.

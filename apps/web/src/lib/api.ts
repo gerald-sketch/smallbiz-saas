@@ -1,8 +1,13 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from "axios";
 
 const apiBaseUrl =
-  (import.meta as ImportMeta & { env: { VITE_API_URL?: string } }).env
-    .VITE_API_URL ?? "/api";
+  (
+    import.meta as ImportMeta & {
+      env: {
+        VITE_API_URL?: string;
+      };
+    }
+  ).env.VITE_API_URL ?? "/api";
 
 export const api = axios.create({
   baseURL: apiBaseUrl,
@@ -11,76 +16,149 @@ export const api = axios.create({
 
 let accessToken: string | null = null;
 
-export function setAccessToken(token: string | null) {
+export function setAccessToken(token: string | null): void {
   accessToken = token;
 }
 
-export function getAccessToken() {
+export function getAccessToken(): string | null {
   return accessToken;
 }
+
+/*
+|--------------------------------------------------------------------------
+| Request interceptor
+|--------------------------------------------------------------------------
+*/
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;
   }
+
   const method = config.method?.toLowerCase();
+
   if (method && ["post", "patch", "put", "delete"].includes(method)) {
     if (!config.headers["Idempotency-Key"]) {
       config.headers["Idempotency-Key"] = crypto.randomUUID();
     }
   }
+
   return config;
 });
+
+/*
+|--------------------------------------------------------------------------
+| Refresh token
+|--------------------------------------------------------------------------
+*/
 
 let refreshing: Promise<string | null> | null = null;
 
 async function doRefresh(): Promise<string | null> {
   try {
-    const res = await axios.post(
+    // Use plain axios here.
+    // This prevents the refresh request from
+    // entering the same response interceptor.
+    const response = await axios.post(
       `${apiBaseUrl}/auth/refresh`,
       {},
-      { withCredentials: true },
+      {
+        withCredentials: true,
+      },
     );
-    const token = res.data?.accessToken ?? null;
+
+    const token = response.data?.accessToken ?? null;
+
+    if (!token) {
+      setAccessToken(null);
+      return null;
+    }
+
     setAccessToken(token);
+
     return token;
-  } catch {
+  } catch (error) {
     setAccessToken(null);
     return null;
   }
 }
 
-api.interceptors.response.use(
-  (r) => r,
-  async (error: AxiosError) => {
-    const original = error.config as InternalAxiosRequestConfig & {
-      _retry?: boolean;
-    };
-    const status = error.response?.status;
-    const url = original?.url ?? "";
+/*
+|--------------------------------------------------------------------------
+| Response interceptor
+|--------------------------------------------------------------------------
+*/
 
+api.interceptors.response.use(
+  (response) => response,
+
+  async (error: AxiosError) => {
+    const original = error.config as
+      | (InternalAxiosRequestConfig & {
+          _retry?: boolean;
+        })
+      | undefined;
+
+    if (!original) {
+      return Promise.reject(error);
+    }
+
+    const status = error.response?.status;
+
+    const url = original.url ?? "";
+
+    /*
+     * Only refresh normal authenticated requests.
+     * Never refresh login/register/refresh/logout.
+     */
     if (status === 401 && !original._retry && !url.includes("/auth/")) {
       original._retry = true;
+
+      /*
+       * Prevent multiple simultaneous refresh calls.
+       */
       refreshing ??= doRefresh().finally(() => {
         refreshing = null;
       });
+
       const token = await refreshing;
+
       if (token) {
         original.headers.Authorization = `Bearer ${token}`;
+
+        // Retry the original request.
         return api(original);
       }
-      if (typeof window !== "undefined") window.location.href = "/login";
+
+      /*
+       * Refresh token is invalid or expired.
+       */
+      if (typeof window !== "undefined") {
+        window.location.href = "/login";
+      }
     }
+
     return Promise.reject(error);
   },
 );
 
-export function apiErrorMessage(e: unknown): string {
-  if (axios.isAxiosError(e)) {
-    const data = e.response?.data as
-      | { message?: string; error?: string }
+/*
+|--------------------------------------------------------------------------
+| API error helper
+|--------------------------------------------------------------------------
+*/
+
+export function apiErrorMessage(error: unknown): string {
+  if (axios.isAxiosError(error)) {
+    const data = error.response?.data as
+      | {
+          message?: string;
+          error?: string;
+        }
       | undefined;
-    return data?.message ?? data?.error ?? e.message;
+
+    return data?.message ?? data?.error ?? error.message;
   }
-  return e instanceof Error ? e.message : "Something went wrong";
+
+  return error instanceof Error ? error.message : "Something went wrong";
 }

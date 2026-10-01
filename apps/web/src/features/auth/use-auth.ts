@@ -19,7 +19,7 @@ export function useLogin() {
     },
     onSuccess: (data) => {
       setSession(data.user, data.accessToken);
-      navigate("/");
+      navigate("/dashboard");
     },
   });
 }
@@ -40,7 +40,7 @@ export function useRegister() {
     },
     onSuccess: (data) => {
       setSession(data.user, data.accessToken);
-      navigate("/");
+      navigate("/dashboard");
     },
   });
 }

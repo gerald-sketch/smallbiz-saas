@@ -41,7 +41,12 @@ interface NavItem {
 }
 
 const mainNav: NavItem[] = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  {
+    to: "/dashboard",
+    label: "Dashboard",
+    icon: LayoutDashboard,
+    exact: true,
+  },
   { to: "/pos", label: "Point of Sale", icon: ShoppingCart },
   { to: "/products", label: "Products", icon: Package },
   { to: "/inventory", label: "Inventory", icon: ClipboardList },
