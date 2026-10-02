@@ -20,7 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 function pesoCompact(n: number) {
-  return `₱${n.toLocaleString("en-PH", { maximumFractionDigits: 0 })}`;
+  return `₱${n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 const ROLE_LABEL: Record<string, string> = {
@@ -286,7 +286,8 @@ function OwnerCard({
 export function StaffPerformancePage() {
   const navigate = useNavigate();
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const { data: allUsers, isLoading } = useStaffOverview();
+  const { data, isLoading } = useStaffOverview();
+  const allUsers = data?.staff;
 
   // ─── Split owner from staff ───
   const owners = useMemo(
@@ -310,13 +311,14 @@ export function StaffPerformancePage() {
     return {
       staffCount: staff.length,
       activeStaffCount: activeStaff.length,
+      todayRevenue: data?.todayRevenue ?? 0,
       staffRevenue,
       ownerRevenue,
       topPerformer,
       avgPerStaff:
         activeStaff.length > 0 ? staffRevenue / activeStaff.length : 0,
     };
-  }, [staff, owners]);
+  }, [staff, owners, data?.todayRevenue]);
 
   if (isLoading || !allUsers) {
     return (
@@ -356,12 +358,19 @@ export function StaffPerformancePage() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
         <StatCard
           label="Team Size"
           value={stats.staffCount.toString()}
           sub={`${stats.activeStaffCount} with sales`}
           icon={Users}
+        />
+        <StatCard
+          label="Today's Sales"
+          value={pesoCompact(stats.todayRevenue)}
+          sub="All business sales"
+          icon={TrendingUp}
+          tone="primary"
         />
         <StatCard
           label="Staff Revenue"

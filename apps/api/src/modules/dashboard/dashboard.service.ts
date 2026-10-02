@@ -25,18 +25,9 @@ function startOfBusinessMonth(d: Date): Date {
 export async function summary(businessId: string) {
   const now = new Date();
   const todayStart = startOfBusinessDay(now);
+  const tomorrowStart = new Date(todayStart.getTime() + MS_PER_DAY);
   const monthStart = startOfBusinessMonth(now);
   const thirtyDaysAgo = new Date(todayStart.getTime() - 29 * MS_PER_DAY);
-
-  const todaySales = await prisma.sale.aggregate({
-    where: {
-      businessId,
-      deletedAt: null,
-      paidAt: { gte: todayStart },
-    },
-    _sum: { total: true },
-    _count: true,
-  });
 
   const mtdSales = await prisma.sale.aggregate({
     where: { businessId, deletedAt: null, paidAt: { gte: monthStart } },
@@ -108,7 +99,7 @@ export async function summary(businessId: string) {
   >`
     SELECT
       TO_CHAR(
-        DATE_TRUNC('day', "paidAt" AT TIME ZONE 'Asia/Manila'),
+        DATE_TRUNC('day', "paidAt" + INTERVAL '8 hours'),
         'YYYY-MM-DD'
       ) AS day,
       COALESCE(SUM(total), 0)::text AS total,
@@ -117,17 +108,36 @@ export async function summary(businessId: string) {
     WHERE "businessId"::text = ${businessId}
       AND "deletedAt" IS NULL
       AND "paidAt" >= ${thirtyDaysAgo}
-    GROUP BY DATE_TRUNC('day', "paidAt" AT TIME ZONE 'Asia/Manila')
-    ORDER BY DATE_TRUNC('day', "paidAt" AT TIME ZONE 'Asia/Manila') ASC
+      AND "paidAt" < ${tomorrowStart}
+    GROUP BY DATE_TRUNC('day', "paidAt" + INTERVAL '8 hours')
+    ORDER BY DATE_TRUNC('day', "paidAt" + INTERVAL '8 hours') ASC
   `;
+  const dailyByDay = new Map(daily.map((row) => [row.day, row]));
+  const todayDay = new Date(now.getTime() + BUSINESS_UTC_OFFSET_MS)
+    .toISOString()
+    .slice(0, 10);
+  const todaySales = dailyByDay.get(todayDay);
+  const daily30d = Array.from({ length: 30 }, (_, index) => {
+    const day = new Date(
+      thirtyDaysAgo.getTime() + index * MS_PER_DAY + BUSINESS_UTC_OFFSET_MS,
+    )
+      .toISOString()
+      .slice(0, 10);
+    const row = dailyByDay.get(day);
+    return {
+      day,
+      total: round2(Number(row?.total ?? 0)),
+      count: row?.count ?? 0,
+    };
+  });
 
   const revenueMTD = Number(mtdSales._sum.total ?? 0);
   const expensesMTD = Number(mtdExpenses._sum.amount ?? 0);
 
   return {
     today: {
-      salesTotal: round2(Number(todaySales._sum.total ?? 0)),
-      salesCount: todaySales._count,
+      salesTotal: round2(Number(todaySales?.total ?? 0)),
+      salesCount: todaySales?.count ?? 0,
     },
     mtd: {
       revenue: round2(revenueMTD),
@@ -150,11 +160,7 @@ export async function summary(businessId: string) {
       pendingPurchaseOrders: pendingPOs,
     },
     recentSales,
-    daily30d: daily.map((d) => ({
-      day: d.day,
-      total: round2(Number(d.total)),
-      count: d.count,
-    })),
+    daily30d,
   };
 }
 
@@ -162,6 +168,7 @@ export async function summary(businessId: string) {
 export async function staffOverview(businessId: string) {
   const now = new Date();
   const todayStart = startOfBusinessDay(now);
+  const tomorrowStart = new Date(todayStart.getTime() + MS_PER_DAY);
   const monthStart = startOfBusinessMonth(now);
 
   const rows = await prisma.$queryRaw<
@@ -186,9 +193,9 @@ export async function staffOverview(businessId: string) {
       u.role::text AS role,
       COUNT(s.id)::int AS "salesCount",
       COALESCE(SUM(s.total), 0)::text AS revenue,
-      COUNT(CASE WHEN s."paidAt" >= ${todayStart} THEN 1 END)::int AS "todayCount",
+      COUNT(CASE WHEN s."paidAt" >= ${todayStart} AND s."paidAt" < ${tomorrowStart} THEN 1 END)::int AS "todayCount",
       COALESCE(
-        SUM(CASE WHEN s."paidAt" >= ${todayStart} THEN s.total ELSE 0 END),
+        SUM(CASE WHEN s."paidAt" >= ${todayStart} AND s."paidAt" < ${tomorrowStart} THEN s.total ELSE 0 END),
         0
       )::text AS "todayRevenue",
       COUNT(CASE WHEN s."paidAt" >= ${monthStart} THEN 1 END)::int AS "mtdCount",
@@ -226,6 +233,20 @@ export async function staffOverview(businessId: string) {
   });
 }
 
+export async function todaySalesTotal(businessId: string) {
+  const todayStart = startOfBusinessDay(new Date());
+  const tomorrowStart = new Date(todayStart.getTime() + MS_PER_DAY);
+  const result = await prisma.sale.aggregate({
+    where: {
+      businessId,
+      deletedAt: null,
+      paidAt: { gte: todayStart, lt: tomorrowStart },
+    },
+    _sum: { total: true },
+  });
+  return round2(Number(result._sum.total ?? 0));
+}
+
 // ─── Individual Staff Detail ───────────────────────────
 export async function staffDetail(businessId: string, userId: string) {
   const user = await prisma.user.findFirst({
@@ -244,6 +265,7 @@ export async function staffDetail(businessId: string, userId: string) {
 
   const now = new Date();
   const todayStart = startOfBusinessDay(now);
+  const tomorrowStart = new Date(todayStart.getTime() + MS_PER_DAY);
   const monthStart = startOfBusinessMonth(now);
   const fourteenDaysAgo = new Date(todayStart.getTime() - 13 * MS_PER_DAY);
 
@@ -258,7 +280,7 @@ export async function staffDetail(businessId: string, userId: string) {
         businessId,
         userId,
         deletedAt: null,
-        paidAt: { gte: todayStart },
+        paidAt: { gte: todayStart, lt: tomorrowStart },
       },
       _sum: { total: true },
       _count: true,
@@ -280,7 +302,7 @@ export async function staffDetail(businessId: string, userId: string) {
   >`
     SELECT
       TO_CHAR(
-        DATE_TRUNC('day', "paidAt" AT TIME ZONE 'Asia/Manila'),
+        DATE_TRUNC('day', "paidAt" + INTERVAL '8 hours'),
         'YYYY-MM-DD'
       ) AS day,
       COALESCE(SUM(total), 0)::text AS total,
@@ -290,8 +312,8 @@ export async function staffDetail(businessId: string, userId: string) {
       AND "userId"::text = ${userId}
       AND "deletedAt" IS NULL
       AND "paidAt" >= ${fourteenDaysAgo}
-    GROUP BY DATE_TRUNC('day', "paidAt" AT TIME ZONE 'Asia/Manila')
-    ORDER BY DATE_TRUNC('day', "paidAt" AT TIME ZONE 'Asia/Manila') ASC
+    GROUP BY DATE_TRUNC('day', "paidAt" + INTERVAL '8 hours')
+    ORDER BY DATE_TRUNC('day', "paidAt" + INTERVAL '8 hours') ASC
   `;
 
   const topProducts = await prisma.$queryRaw<

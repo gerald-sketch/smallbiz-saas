@@ -159,6 +159,7 @@ export function DashboardPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["dashboard", "summary"],
     queryFn: async () => (await api.get<Summary>("/dashboard/summary")).data,
+    refetchInterval: 5 * 60 * 1000,
   });
 
   const hour = new Date().getHours();
@@ -429,6 +430,7 @@ export function DashboardPage() {
                         </p>
                         <p className="text-[11px] text-muted-foreground">
                           {new Date(s.paidAt).toLocaleString("en-PH", {
+                            timeZone: "Asia/Manila",
                             month: "short",
                             day: "numeric",
                             hour: "2-digit",

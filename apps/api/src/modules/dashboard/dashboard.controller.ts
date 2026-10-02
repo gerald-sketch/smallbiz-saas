@@ -22,8 +22,11 @@ export async function staffOverview(
 ): Promise<void> {
   try {
     if (!req.user) throw new AppError(401, "UNAUTHORIZED", "Not authenticated");
-    const staff = await service.staffOverview(req.user.businessId);
-    res.json({ staff });
+    const [staff, todayRevenue] = await Promise.all([
+      service.staffOverview(req.user.businessId),
+      service.todaySalesTotal(req.user.businessId),
+    ]);
+    res.json({ staff, todayRevenue });
   } catch (e) {
     next(e);
   }

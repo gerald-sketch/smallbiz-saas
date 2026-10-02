@@ -72,6 +72,7 @@ export function ReceiptDialog({ sale, businessName, onClose }: Props) {
               </p>
               <p className="text-[11px] text-muted-foreground leading-tight">
                 {saleDate.toLocaleString("en-PH", {
+                  timeZone: "Asia/Manila",
                   dateStyle: "medium",
                   timeStyle: "short",
                 })}

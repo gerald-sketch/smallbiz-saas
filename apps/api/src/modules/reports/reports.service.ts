@@ -2,6 +2,7 @@ import { prisma } from "../../lib/prisma";
 import { AppError } from "../../middleware/errorHandler";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const BUSINESS_UTC_OFFSET_MS = 8 * 60 * 60 * 1000;
 
 export type GroupBy = "day" | "week" | "month";
 
@@ -9,10 +10,17 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+function startOfBusinessDay(d: Date): Date {
+  const x = new Date(d.getTime() + BUSINESS_UTC_OFFSET_MS);
+  x.setUTCHours(0, 0, 0, 0);
+  return new Date(x.getTime() - BUSINESS_UTC_OFFSET_MS);
+}
+
 export function resolveRange(from?: Date, to?: Date): { from: Date; to: Date } {
   const now = new Date();
   const end = to ?? now;
-  const start = from ?? new Date(end.getTime() - 30 * MS_PER_DAY);
+  const start =
+    from ?? startOfBusinessDay(new Date(end.getTime() - 29 * MS_PER_DAY));
   if (start > end) {
     throw new AppError(400, "INVALID_RANGE", "from must be before to");
   }
@@ -40,7 +48,7 @@ export async function salesSummary(
       SELECT
         DATE_TRUNC(
           ${groupBy}::text,
-          "paidAt" AT TIME ZONE 'Asia/Manila'
+          "paidAt" + INTERVAL '8 hours'
         ) AS bucket,
         "subtotal",
         "discount",
@@ -73,8 +81,38 @@ export async function salesSummary(
     total: round2(Number(r.total)),
   }));
 
-  const grandTotal = mapped.reduce((s, r) => s + r.total, 0);
-  const totalSales = mapped.reduce((s, r) => s + r.salesCount, 0);
+  const dailyRows =
+    groupBy === "day" && to > from
+      ? (() => {
+          const rowsByDay = new Map(mapped.map((row) => [row.period, row]));
+          const firstDay = startOfBusinessDay(from);
+          const lastDay = startOfBusinessDay(new Date(to.getTime() - 1));
+          const days =
+            Math.floor((lastDay.getTime() - firstDay.getTime()) / MS_PER_DAY) +
+            1;
+
+          return Array.from({ length: days }, (_, index) => {
+            const day = new Date(
+              firstDay.getTime() + index * MS_PER_DAY + BUSINESS_UTC_OFFSET_MS,
+            )
+              .toISOString()
+              .slice(0, 10);
+            return (
+              rowsByDay.get(day) ?? {
+                period: day,
+                salesCount: 0,
+                subtotal: 0,
+                discount: 0,
+                tax: 0,
+                total: 0,
+              }
+            );
+          });
+        })()
+      : mapped;
+
+  const grandTotal = dailyRows.reduce((s, r) => s + r.total, 0);
+  const totalSales = dailyRows.reduce((s, r) => s + r.salesCount, 0);
 
   return {
     from,
@@ -82,7 +120,7 @@ export async function salesSummary(
     groupBy,
     totalSales,
     grandTotal: round2(grandTotal),
-    rows: mapped,
+    rows: dailyRows,
   };
 }
 // ─── Profit & Loss ─────────────────────────────────────

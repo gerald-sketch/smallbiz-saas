@@ -48,7 +48,11 @@ export function useStaffOverview() {
   return useQuery({
     queryKey: ["dashboard", "staff"],
     queryFn: async () =>
-      (await api.get<{ staff: StaffSummary[] }>("/dashboard/staff")).data.staff,
+      (
+        await api.get<{ staff: StaffSummary[]; todayRevenue: number }>(
+          "/dashboard/staff",
+        )
+      ).data,
     staleTime: 30_000,
   });
 }

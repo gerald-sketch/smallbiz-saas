@@ -325,6 +325,7 @@ export function StaffDetailDialog({ userId, onClose }: Props) {
                         </p>
                         <p className="text-[11px] text-muted-foreground">
                           {new Date(s.paidAt).toLocaleString("en-PH", {
+                            timeZone: "Asia/Manila",
                             month: "short",
                             day: "numeric",
                             hour: "2-digit",
