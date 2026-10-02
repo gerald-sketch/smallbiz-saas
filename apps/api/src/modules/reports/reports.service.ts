@@ -38,7 +38,10 @@ export async function salesSummary(
   >`
     WITH bucketed AS (
       SELECT
-        DATE_TRUNC(${groupBy}::text, "paidAt") AS bucket,
+        DATE_TRUNC(
+          ${groupBy}::text,
+          "paidAt" AT TIME ZONE 'Asia/Manila'
+        ) AS bucket,
         "subtotal",
         "discount",
         "tax",
